@@ -649,7 +649,7 @@ double plane_intersection(double* Ro, double* Rd,
 //and a buffer to store the data of each pixel.  It then uses the camera information to display the intersections
 //of raycasts and the objects those raycasts are hitting to store RGB pixel values for that spot of intersection
 //as observed by the camera position.
-void store_pixels(int numOfObjects, Object* objects, Pixel* data, Light* lights)
+void store_pixels(int numOfObjects, int numOfLights, Object* objects, Pixel* data, Light* lights)
 {
     double cx, cy, h, w;
     cx = 0;  //default camera values
@@ -699,7 +699,7 @@ void store_pixels(int numOfObjects, Object* objects, Pixel* data, Light* lights)
             normalize(Rd);
 
             double best_t = INFINITY; //find the minimum best t intersection of any object
-            int best_t_i; //keep track of the corresponding object's index
+            int best_object; //keep track of the corresponding object's index
             for (i=0; i < numOfObjects; i += 1)
             {
                 double t = 0;
@@ -725,17 +725,25 @@ void store_pixels(int numOfObjects, Object* objects, Pixel* data, Light* lights)
                 if (t > 0 && t < best_t) //if an object is in front of another object, ensure the front-most object is displayed
                 {
                     best_t = t;
-                    best_t_i = i;
+                    best_object = i;
                 }
             }
+
+            Pixel temporary;
+            temporary.r = 0;
+            temporary.g = 0;
+            temporary.b = 0;
+
+
+
+
             if (best_t > 0 && best_t != INFINITY) //if the intersection is in the viewplane and isn't infinity, store its object's color into the buffer
             {
                 //at the correct x,y location
                 //printf("here. x %d\ty %d\n", x, y);
-                Pixel temporary;
-                temporary.r = (int)(objects[best_t_i*sizeof(Object)].diffuse_color[0]*255);
-                temporary.g = (int)(objects[best_t_i*sizeof(Object)].diffuse_color[1]*255);
-                temporary.b = (int)(objects[best_t_i*sizeof(Object)].diffuse_color[2]*255);
+                temporary.r = (int)(objects[best_object*sizeof(Object)].diffuse_color[0]*255);
+                temporary.g = (int)(objects[best_object*sizeof(Object)].diffuse_color[1]*255);
+                temporary.b = (int)(objects[best_object*sizeof(Object)].diffuse_color[2]*255);
                 *(data+(sizeof(Pixel)*pheight*pwidth)-(y+1)*pwidth*sizeof(Pixel)+x*sizeof(Pixel)) = temporary;
             }
             else //no point of intersection was found for any object at the given x,y so put black into that x,y pixel into the buffer
@@ -747,9 +755,8 @@ void store_pixels(int numOfObjects, Object* objects, Pixel* data, Light* lights)
                 temporary.b = 0;
                 *(data+(sizeof(Pixel)*pheight*pwidth)-(y+1)*pwidth*sizeof(Pixel)+x*sizeof(Pixel)) = temporary;
             }
-
-        }
-    }
+        } //end of x iteration
+    } //end of y iteration
 }
 
 
@@ -797,7 +804,7 @@ int main(int argc, char* argv[])
     Pixel* data = malloc(sizeof(Pixel)*pwidth*pheight*3); //allocate memory to hold all of the pixel data
 
 
-    store_pixels(numOfObjects, &objects[0], &data[0], &lights[0]);    //store the points of ray intersection and that object's color values into a buffer
+    store_pixels(numOfObjects, numOfLights, &objects[0], &data[0], &lights[0]);    //store the points of ray intersection and that object's color values into a buffer
     maxcv = 255;
     printf("writing to image file...\n");
     int successfulWrite = write_p3(&data[0]);             //write the pixel buffer to the image file
