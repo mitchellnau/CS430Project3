@@ -237,6 +237,7 @@ int* read_scene(char* filename, Object* objects, Light* lights)
     expect_c(json, '{');
     ungetc('{', json);
     int i = 0;
+    int j = 0;
     while (1)
     {
         c = fgetc(json);
@@ -543,8 +544,18 @@ int* read_scene(char* filename, Object* objects, Light* lights)
             skip_ws(json);
             c = next_c(json);
 
-            *(objects+i*sizeof(Object)) = temp; //allocate the temporary object into a struct of objects at its corresponding position
-            i++; //and increment the index of the current object for the memory that holds the object structs
+            if(obj_or_light == 0)
+            {
+                *(objects+i*sizeof(Object)) = temp; //allocate the temporary object into a struct of objects at its corresponding position
+                i++; //and increment the index of the current object for the memory that holds the object structs
+            }
+            else
+            {
+                *(lights+j*sizeof(Light)) = templight; //allocate the temporary light into a struct of lights at its corresponding position
+                j++; //and increment the index of the current light for the memory that holds the light structs
+            }
+
+
 
             if (c == ',') //if there is another object to be parsed
             {
@@ -562,7 +573,7 @@ int* read_scene(char* filename, Object* objects, Light* lights)
                 fclose(json);
                 int* numObjLts = malloc(sizeof(int)*2);
                 numObjLts[0] = i;
-                numObjLts[1] = 44;
+                numObjLts[1] = j;
                 return numObjLts;
             }
             else //if a list separator or list terminator was not found, print an error and exit
@@ -614,7 +625,7 @@ double plane_intersection(double* Ro, double* Rd,
 //and a buffer to store the data of each pixel.  It then uses the camera information to display the intersections
 //of raycasts and the objects those raycasts are hitting to store RGB pixel values for that spot of intersection
 //as observed by the camera position.
-void store_pixels(int numOfObjects, Object* objects, Pixel* data)
+void store_pixels(int numOfObjects, Object* objects, Pixel* data, Light* lights)
 {
     double cx, cy, h, w;
     cx = 0;  //default camera values
@@ -762,7 +773,7 @@ int main(int argc, char* argv[])
     Pixel* data = malloc(sizeof(Pixel)*pwidth*pheight*3); //allocate memory to hold all of the pixel data
 
 
-    store_pixels(numOfObjects, &objects[0], &data[0]);    //store the points of ray intersection and that object's color values into a buffer
+    store_pixels(numOfObjects, &objects[0], &data[0], &lights[0]);    //store the points of ray intersection and that object's color values into a buffer
     maxcv = 255;
     printf("writing to image file...\n");
     int successfulWrite = write_p3(&data[0]);             //write the pixel buffer to the image file
