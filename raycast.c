@@ -416,7 +416,31 @@ int* read_scene(char* filename, Object* objects, Light* lights)
                         }
                         if(obj_or_light == 1)
                         {
-                            //this is a light
+                            if((strcmp(key, "color") == 0))
+                            {
+                                templight.color[0] = value[0];
+                                templight.color[1] = value[1];
+                                templight.color[2] = value[2];
+                                //c_attribute_counter++;
+                            }
+                            else if((strcmp(key, "position") == 0))
+                            {
+                                templight.position[0] = value[0];
+                                templight.position[1] = value[1];
+                                templight.position[2] = value[2];
+                                //p_attribute_counter++;
+                            }
+                            else if((strcmp(key, "direction") == 0))
+                            {
+                                templight.kind = 1;
+                                templight.spotlight.direction[0] = value[0];
+                                templight.spotlight.direction[1] = value[1];
+                                templight.spotlight.direction[2] = value[2];
+                            }
+                            else
+                            {
+                                //error check this
+                            }
                         }
                         else if (temp.kind == 0 && (strcmp(key, "position") == 0))
                         {
