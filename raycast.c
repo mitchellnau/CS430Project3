@@ -218,7 +218,7 @@ double* next_vector(FILE* json)
 //After successfully parsing the json file, it will have stored all objects in
 //the json file into the memory passed into the function and will return the
 //number of objects it found.
-int read_scene(char* filename, Object* objects)
+int* read_scene(char* filename, Object* objects, Light* lights)
 {
     int c;
     FILE* json = fopen(filename, "r");
@@ -560,7 +560,10 @@ int read_scene(char* filename, Object* objects)
             else if (c == ']') //if there are no more objects to be parsed, close the file and return the number of objects
             {
                 fclose(json);
-                return i;
+                int* numObjLts = malloc(sizeof(int)*2);
+                numObjLts[0] = i;
+                numObjLts[1] = 44;
+                return numObjLts;
             }
             else //if a list separator or list terminator was not found, print an error and exit
             {
@@ -751,8 +754,11 @@ int main(int argc, char* argv[])
         fprintf(stderr, "Error: Input height '%d' cannot be less than or equal to zero.\n", pheight);
         exit(1);
     }
-    int numOfObjects = read_scene(argv[3], &objects[0]);  //parse the scene and store the number of objects
+    int* parsedNums = read_scene(argv[3], &objects[0], &lights[0]);  //parse the scene and store the number of objects
+    int numOfObjects = parsedNums[0];
+    int numOfLights = parsedNums[1];
     printf("# of Objects: %d\n", numOfObjects);           //echo the number of objects
+    printf("# of Lights : %d\n", numOfLights);           //echo the number of lights
     Pixel* data = malloc(sizeof(Pixel)*pwidth*pheight*3); //allocate memory to hold all of the pixel data
 
 
