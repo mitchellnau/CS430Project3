@@ -16,7 +16,8 @@ typedef struct Pixel
 typedef struct
 {
     int kind; // 0 = camera, 1 = sphere, 2 = plane
-    double color[3];
+    double diffuse_color[3];
+    double specular_color[3];
     union
     {
         struct
@@ -37,6 +38,28 @@ typedef struct
         } plane;
     };
 } Object;
+
+typedef struct
+{
+    int kind; // 0 = radial, 1 = spotlight
+    double color[3];
+    double position[3];
+    union
+    {
+        struct
+        {
+            double radial_a2;
+        } radial;
+        struct
+        {
+            double radial_a2;
+            double radial_a1;
+            double radial_a0;
+            double angular_a0;
+            double direction[3];
+        } spotlight;
+    };
+} Light;
 
 FILE* outputfp;
 int pwidth, pheight, maxcv; //global variables to store p3 header information
@@ -227,6 +250,9 @@ int read_scene(char* filename, Object* objects)
         {
             skip_ws(json);
             Object temp;      //temporary variable to store the object
+            Light templight;
+
+            int obj_or_light = 0;
 
             // Parse the object
             char* key = next_string(json);
@@ -253,6 +279,11 @@ int read_scene(char* filename, Object* objects)
             {
                 temp.kind = 2;         //remember that this object is a plane in the temporary Object
             }
+            else if (strcmp(value, "light") == 0)
+            {
+                obj_or_light = 1;
+                //light was found
+            }
             else                       //if a non-camera/sphere/plane was found as the the type, print an error message and exit
             {
                 fprintf(stderr, "Error: Unknown type, \"%s\", on line number %d.\n", value, line);
@@ -264,7 +295,8 @@ int read_scene(char* filename, Object* objects)
             int w_attribute_counter = 0;
             int h_attribute_counter = 0;
             int r_attribute_counter = 0;
-            int c_attribute_counter = 0;
+            int dc_attribute_counter = 0;
+            int sc_attribute_counter = 0;
             int p_attribute_counter = 0;
             int n_attribute_counter = 0;
 
@@ -287,18 +319,38 @@ int read_scene(char* filename, Object* objects)
                     skip_ws(json);
                     if ((strcmp(key, "width") == 0) ||    //if the key denotes an decimal number
                             (strcmp(key, "height") == 0) ||
-                            (strcmp(key, "radius") == 0))
+                            (strcmp(key, "radius") == 0) ||
+                            (strcmp(key, "radial-a2") == 0) ||
+                            (strcmp(key, "radial-a1") == 0) ||
+                            (strcmp(key, "radial-a0") == 0) ||
+                            (strcmp(key, "angular-a0") == 0))
                     {
                         double value = next_number(json); //get the decimal number and store it in the relevant struct field
-                        if(temp.kind == 0 && (strcmp(key, "width") == 0))
+                        if(temp.kind == 0 && obj_or_light == 0)
                         {
-                            temp.camera.width = value;
-                            w_attribute_counter++;
-                        }
-                        else if(temp.kind == 0 && (strcmp(key, "height") == 0))
-                        {
-                            temp.camera.height = value;
-                            h_attribute_counter++;
+                            if((strcmp(key, "width") == 0))
+                            {
+                                temp.camera.width = value;
+                                w_attribute_counter++;
+                            }
+                            else if(strcmp(key, "height") == 0)
+                            {
+                                temp.camera.height = value;
+                                h_attribute_counter++;
+                            }
+                            else if(strcmp(key, "position") == 0)
+                            {
+                                //do nothing
+                            }
+                            else
+                            {
+                                fprintf(stderr, "Error: Camera object has unexpected attribute '%s' on line number %d.\n", key, line);
+                                exit(1);
+                            }
+                            //default camera position
+                            temp.camera.center[0] = 0.0;
+                            temp.camera.center[1] = 0.0;
+                            temp.camera.center[2] = 0.0;
                         }
                         else if(temp.kind == 1 && (strcmp(key, "radius") == 0))
                         {
@@ -310,24 +362,25 @@ int read_scene(char* filename, Object* objects)
                                 exit(1);
                             }
                         }
+                        else if(obj_or_light == 1)
+                        {
+                            //this is a light
+                        }
                         else
                         {
-                            fprintf(stderr, "Error: Non-camera object has attribute width or height or non-sphere object has a radius on line number %d.\n", line);
+                            fprintf(stderr, "Error: Unexpected attribute '%s' on line number %d.\n", key, line);
                             exit(1);
                         }
-                        if(temp.kind == 0)  //camera assumed to be at 0,0,0
-                        {
-                            temp.camera.center[0] = 0.0;
-                            temp.camera.center[1] = 0.0;
-                            temp.camera.center[2] = 0.0;
-                        }
                     }
-                    else if ((strcmp(key, "color") == 0) || //if the key denotes a vector
+                    else if ((strcmp(key, "diffuse_color") == 0) || //if the key denotes a vector
+                             (strcmp(key, "specular_color") == 0) ||
                              (strcmp(key, "position") == 0) ||
-                             (strcmp(key, "normal") == 0))
+                             (strcmp(key, "normal") == 0) ||
+                             (strcmp(key, "color") == 0) ||
+                             (strcmp(key, "direction") == 0))
                     {
                         double* value = next_vector(json); //get the vector and store it in the relevant struct field
-                        if(strcmp(key, "color") == 0)
+                        if(strcmp(key, "diffuse_color") == 0)
                         {
                             if(value[0] > 1 || value[0] < 0 || //color values must be between 0 and 1
                                     value[1] > 1 || value[1] < 0 || //an error is printed and and the program exits otherwise.
@@ -337,40 +390,9 @@ int read_scene(char* filename, Object* objects)
                                 exit(1);
                             }
                         }
-                        if(temp.kind == 1 && (strcmp(key, "color") == 0))
+                        if(obj_or_light == 1)
                         {
-                            temp.color[0] = value[0];
-                            temp.color[1] = value[1];
-                            temp.color[2] = value[2];
-                            c_attribute_counter++;
-                        }
-                        else if(temp.kind == 1 && (strcmp(key, "position") == 0))
-                        {
-                            temp.sphere.center[0] = value[0];
-                            temp.sphere.center[1] = value[1];
-                            temp.sphere.center[2] = value[2];
-                            p_attribute_counter++;
-                        }
-                        else if(temp.kind == 2 && (strcmp(key, "color") == 0))
-                        {
-                            temp.color[0] = value[0];
-                            temp.color[1] = value[1];
-                            temp.color[2] = value[2];
-                            c_attribute_counter++;
-                        }
-                        else if(temp.kind == 2 && (strcmp(key, "position") == 0))
-                        {
-                            temp.plane.center[0] = value[0];
-                            temp.plane.center[1] = value[1];
-                            temp.plane.center[2] = value[2];
-                            p_attribute_counter++;
-                        }
-                        else if(temp.kind == 2 && (strcmp(key, "normal") == 0))
-                        {
-                            temp.plane.normal[0] = value[0];
-                            temp.plane.normal[1] = value[1];
-                            temp.plane.normal[2] = value[2];
-                            n_attribute_counter++;
+                            //this is a light
                         }
                         else if (temp.kind == 0 && (strcmp(key, "position") == 0))
                         {
@@ -378,6 +400,65 @@ int read_scene(char* filename, Object* objects)
                             temp.camera.center[1] = value[1];
                             temp.camera.center[2] = value[2];
                             p_attribute_counter++;
+                        }
+                        else if(temp.kind == 1)
+                        {
+                            if(strcmp(key, "diffuse_color") == 0)
+                            {
+                                temp.diffuse_color[0] = value[0];
+                                temp.diffuse_color[1] = value[1];
+                                temp.diffuse_color[2] = value[2];
+                                dc_attribute_counter++;
+                            }
+                            else if(strcmp(key, "specular_color") == 0)
+                            {
+                                temp.specular_color[0] = value[0];
+                                temp.specular_color[1] = value[1];
+                                temp.specular_color[2] = value[2];
+                                sc_attribute_counter++;
+                            }
+                            else if(strcmp(key, "position") == 0)
+                            {
+                                temp.sphere.center[0] = value[0];
+                                temp.sphere.center[1] = value[1];
+                                temp.sphere.center[2] = value[2];
+                                p_attribute_counter++;
+                            }
+                        }
+                        else if(temp.kind == 2)
+                        {
+                            if(strcmp(key, "diffuse_color") == 0)
+                                {
+                                temp.diffuse_color[0] = value[0];
+                                temp.diffuse_color[1] = value[1];
+                                temp.diffuse_color[2] = value[2];
+                                dc_attribute_counter++;
+                            }
+                            else if(strcmp(key, "specular_color") == 0)
+                            {
+                                temp.specular_color[0] = value[0];
+                                temp.specular_color[1] = value[1];
+                                temp.specular_color[2] = value[2];
+                                sc_attribute_counter++;
+                            }
+                            else if(temp.kind == 2 && (strcmp(key, "position") == 0))
+                            {
+                                temp.plane.center[0] = value[0];
+                                temp.plane.center[1] = value[1];
+                                temp.plane.center[2] = value[2];
+                                p_attribute_counter++;
+                            }
+                            else if(temp.kind == 2 && (strcmp(key, "normal") == 0))
+                            {
+                                temp.plane.normal[0] = value[0];
+                                temp.plane.normal[1] = value[1];
+                                temp.plane.normal[2] = value[2];
+                                n_attribute_counter++;
+                            }
+                            else
+                            {
+
+                            }
                         }
                         else
                         {
@@ -413,20 +494,22 @@ int read_scene(char* filename, Object* objects)
                 }
             }
             //error checking for duplicate object attributes
-            if(temp.kind == 0 && (h_attribute_counter != 1 || w_attribute_counter != 1 || c_attribute_counter != 0 ||
-                                  n_attribute_counter != 0 || r_attribute_counter != 0))
+            if(obj_or_light == 0 && temp.kind == 0 && (h_attribute_counter != 1 || w_attribute_counter != 1 || dc_attribute_counter != 0 ||
+                                                      sc_attribute_counter != 0 || n_attribute_counter != 0 || r_attribute_counter != 0))
             {
                 fprintf(stderr, "Error: Expecting unique width, height, (or additionally position) attributes for camera object on line %d.\n");
                 exit(1);
             }
-            if(temp.kind == 1 && (c_attribute_counter != 1 || r_attribute_counter != 1 || p_attribute_counter != 1 ||
-                                  h_attribute_counter != 0 || w_attribute_counter != 0 || n_attribute_counter != 0))
+            if(obj_or_light == 0 && temp.kind == 1 && (dc_attribute_counter != 1 || sc_attribute_counter != 1 || r_attribute_counter != 1 ||
+                                                        p_attribute_counter != 1 || h_attribute_counter != 0 || w_attribute_counter != 0 ||
+                                                        n_attribute_counter != 0))
             {
                 fprintf(stderr, "Error: Expecting unique color, position, or radius attributes for sphere object on line %d.\n", line);
                 exit(1);
             }
-            if(temp.kind == 2 && (c_attribute_counter != 1 || p_attribute_counter != 1 || n_attribute_counter != 1  ||
-                                  h_attribute_counter != 0 || w_attribute_counter != 0 || r_attribute_counter != 0))
+            if(obj_or_light == 0 && temp.kind == 2 && (dc_attribute_counter != 1 || sc_attribute_counter != 1 || p_attribute_counter != 1 ||
+                                                       n_attribute_counter != 1  || h_attribute_counter != 0 || w_attribute_counter != 0 ||
+                                                       r_attribute_counter != 0))
             {
                 fprintf(stderr, "Error: Expecting unique color, position, or normal attributes for plane object on line %d.\n", line);
                 exit(1);
@@ -586,9 +669,9 @@ void store_pixels(int numOfObjects, Object* objects, Pixel* data)
                 //at the correct x,y location
                 //printf("here. x %d\ty %d\n", x, y);
                 Pixel temporary;
-                temporary.r = (int)(objects[best_t_i*sizeof(Object)].color[0]*255);
-                temporary.g = (int)(objects[best_t_i*sizeof(Object)].color[1]*255);
-                temporary.b = (int)(objects[best_t_i*sizeof(Object)].color[2]*255);
+                temporary.r = (int)(objects[best_t_i*sizeof(Object)].diffuse_color[0]*255);
+                temporary.g = (int)(objects[best_t_i*sizeof(Object)].diffuse_color[1]*255);
+                temporary.b = (int)(objects[best_t_i*sizeof(Object)].diffuse_color[2]*255);
                 *(data+(sizeof(Pixel)*pheight*pwidth)-(y+1)*pwidth*sizeof(Pixel)+x*sizeof(Pixel)) = temporary;
             }
             else //no point of intersection was found for any object at the given x,y so put black into that x,y pixel into the buffer
