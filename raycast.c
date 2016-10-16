@@ -326,7 +326,34 @@ int read_scene(char* filename, Object* objects)
                             (strcmp(key, "angular-a0") == 0))
                     {
                         double value = next_number(json); //get the decimal number and store it in the relevant struct field
-                        if(temp.kind == 0 && obj_or_light == 0)
+                        if(obj_or_light == 1)
+                        {
+                            if((strcmp(key, "radial-a2") == 0))
+                            {
+                                templight.radial.radial_a2 = value;
+                                //w_attribute_counter++;
+                            }
+                            else if((strcmp(key, "radial-a1") == 0))
+                            {
+                                templight.kind = 1;
+                                templight.spotlight.radial_a1 = value;
+                            }
+                            else if((strcmp(key, "radial-a0") == 0))
+                            {
+                                templight.kind = 1;
+                                templight.spotlight.radial_a0 = value;
+                            }
+                            else if((strcmp(key, "angular-a0") == 0))
+                            {
+                                templight.kind = 1;
+                                templight.spotlight.angular_a0 = value;
+                            }
+                            else
+                            {
+                                //error check this
+                            }
+                        }
+                        else if(temp.kind == 0)
                         {
                             if((strcmp(key, "width") == 0))
                             {
@@ -361,10 +388,6 @@ int read_scene(char* filename, Object* objects)
                                 fprintf(stderr, "Error: Sphere radius cannot be less than or equal to 0 on line %d.\n", line);
                                 exit(1);
                             }
-                        }
-                        else if(obj_or_light == 1)
-                        {
-                            //this is a light
                         }
                         else
                         {
@@ -424,6 +447,9 @@ int read_scene(char* filename, Object* objects)
                                 temp.sphere.center[2] = value[2];
                                 p_attribute_counter++;
                             }
+                            else{
+                                //error check this
+                            }
                         }
                         else if(temp.kind == 2)
                         {
@@ -457,7 +483,7 @@ int read_scene(char* filename, Object* objects)
                             }
                             else
                             {
-
+                                //error check this
                             }
                         }
                         else
