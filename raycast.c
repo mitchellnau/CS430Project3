@@ -711,6 +711,7 @@ int main(int argc, char* argv[])
     }
 
     Object* objects = malloc(sizeof(Object)*128);
+    Light* lights = malloc(sizeof(Light)*128);
 
     pwidth = atoi(argv[1]);
     pheight = atoi(argv[2]);
@@ -740,5 +741,8 @@ int main(int argc, char* argv[])
     }
     fclose(outputfp); //close the output file
     printf("closing...");
+    free(lights);
+    free(objects);
+    free(data);
     return(0);
 }
