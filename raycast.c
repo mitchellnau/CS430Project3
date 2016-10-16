@@ -686,7 +686,7 @@ void store_pixels(int numOfObjects, int numOfLights, Object* objects, Pixel* dat
     cy = 0;  // ||
     h = 1;   // ||
     w = 1;   // ||
-    int i;
+    int i, j, k;
     int found = 0; //tell whether a camera is found or not
     for (i=0; i < numOfObjects; i += 1) //get the first camera's x/y positions and width/height
     {
@@ -729,7 +729,8 @@ void store_pixels(int numOfObjects, int numOfLights, Object* objects, Pixel* dat
             normalize(Rd);
 
             double best_t = INFINITY; //find the minimum best t intersection of any object
-            int best_object; //keep track of the corresponding object's index
+            int best_object = -1; //keep track of the corresponding object's index
+
             for (i=0; i < numOfObjects; i += 1)
             {
                 double t = 0;
@@ -766,14 +767,110 @@ void store_pixels(int numOfObjects, int numOfLights, Object* objects, Pixel* dat
 
 
 
+            for (j=0; j < numOfLights; j+=1)
+            {
+                // Shadow test
+                double Ron[3] = {0, 0, 0};
+                double Rdn[3] = {0, 0, 0};
+
+                v3_add(Rd, Ro, Ron);
+                v3_scale(Ron, best_t, Ron);
+                //Ron = best_t * Rd + Ro;
+
+                v3_subtract(lights[j].position, Ron, Rdn);
+                //Rdn = light_position - Ron;
+                Object* closest_shadow_object = NULL;
+                for (k=0; k < numOfObjects; k+=1)
+                {
+                    double distance_to_light = 0;
+
+                    if (k == best_object) continue;
+                    //
+                    switch(objects[k*sizeof(Object)].kind)
+                    {
+                    case 0: //camera has no physical intersections
+                        break;
+                    case 1: //if the object is a sphere, find its minimum intersection
+                        distance_to_light = sphere_intersection(Ron, Rdn,
+                        objects[k*sizeof(Object)].sphere.center,
+                        objects[k*sizeof(Object)].sphere.radius);
+                        break;
+                    case 2: //if the object is a plane, find its point of intersection
+                        distance_to_light = plane_intersection(Ron, Rdn,
+                        objects[k*sizeof(Object)].plane.center,
+                        objects[k*sizeof(Object)].plane.normal);
+                        break;
+                    default:
+                        fprintf(stderr, "Error: Forbidden object struct type located in memory, intersection could not be calculated.\n");
+                        exit(1);
+                    }
+                    if (best_t > distance_to_light)
+                    {
+                        continue;
+                    }
+                }
+                if (closest_shadow_object == NULL)
+                {
+                    // N, L, R, V
+                    double n[3] = {0, 0, 0};
+                    double l[3] = {0, 0, 0};
+                    double r[3] = {0, 0, 0};
+                    double v[3] = {0, 0, 0};
+                    int kind = 0;
+                    double diffuse[3] = {0, 0, 0};
+                    double specular[3] = {0, 0, 0};
+
+
+                    if(objects[best_object*sizeof(Object)].kind  == 1)
+                    {
+                        kind = objects[best_object*sizeof(Object)].kind;
+                        v3_subtract(Ron, objects[best_object*sizeof(Object)].sphere.center, n);
+                    }
+                    else if(objects[best_object*sizeof(Object)].kind  == 2)
+                    {
+                        kind = objects[best_object*sizeof(Object)].kind;
+                        v3_scale(objects[best_object*sizeof(Object)].sphere.center, 1.0, n);
+                    }
+                    else
+                    {
+                        //error check this
+                    }
+
+                    v3_scale(Rdn, 1.0, l);
+
+                    v3_scale(Rd, 1.0, v);
+
+                    //N = closest_object->normal; // plane
+                    //N = Ron - closest_object->center; // sphere
+                    //L = Rdn; // light_position - Ron;
+                    //R = reflection of L;
+                    //V = Rd;
+
+                    //diffuse = ...; // uses object's diffuse color
+                    //specular = ...; // uses object's specular color
+                    diffuse[0] = objects[best_object*sizeof(Object)].diffuse_color[0];
+                    diffuse[1] = objects[best_object*sizeof(Object)].diffuse_color[1];
+                    diffuse[2] = objects[best_object*sizeof(Object)].diffuse_color[2];
+
+                    specular[0] = objects[best_object*sizeof(Object)].specular_color[0];
+                    specular[1] = objects[best_object*sizeof(Object)].specular_color[1];
+                    specular[2] = objects[best_object*sizeof(Object)].specular_color[2];
+
+                    temporary.r += 0.25*((int)(diffuse[0]*255) + (int)(specular[0]*255)); //frad() * fang() * (diffuse + specular);
+                    temporary.g += 0.25*((int)(diffuse[1]*255) + (int)(specular[1]*255));//frad() * fang() * (diffuse + specular);
+                    temporary.b += 0.25*((int)(diffuse[2]*255) + (int)(specular[2]*255));//frad() * fang() * (diffuse + specular);
+                }
+            }
+
+
 
             if (best_t > 0 && best_t != INFINITY) //if the intersection is in the viewplane and isn't infinity, store its object's color into the buffer
             {
                 //at the correct x,y location
                 //printf("here. x %d\ty %d\n", x, y);
-                temporary.r = (int)(objects[best_object*sizeof(Object)].diffuse_color[0]*255);
-                temporary.g = (int)(objects[best_object*sizeof(Object)].diffuse_color[1]*255);
-                temporary.b = (int)(objects[best_object*sizeof(Object)].diffuse_color[2]*255);
+                //temporary.r = (int)(objects[best_object*sizeof(Object)].diffuse_color[0]*255);
+                //temporary.g = (int)(objects[best_object*sizeof(Object)].diffuse_color[1]*255);
+                //temporary.b = (int)(objects[best_object*sizeof(Object)].diffuse_color[2]*255);
                 *(data+(sizeof(Pixel)*pheight*pwidth)-(y+1)*pwidth*sizeof(Pixel)+x*sizeof(Pixel)) = temporary;
             }
             else //no point of intersection was found for any object at the given x,y so put black into that x,y pixel into the buffer
