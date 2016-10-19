@@ -66,6 +66,7 @@ typedef double* V3;
 FILE* outputfp;
 int pwidth, pheight, maxcv; //global variables to store p3 header information
 int line = 1;               //global variable to store line of json file currently being parsed
+int ns = 20;
 
 static inline void v3_add(V3 a, V3 b, V3 c) {
   c[0] = a[0] + b[0];
@@ -859,19 +860,26 @@ void store_pixels(int numOfObjects, int numOfLights, Object* objects, Pixel* dat
                     double ndotl = v3_dot(n, l);
                     if(ndotl < 0)
                     {
-                        ndotl = clamp(ndotl);
+                        ndotl = 0;
                     }
                     diffuse[0] = (int)(clamp(ndotl*objects[best_object*sizeof(Object)].diffuse_color[0]*lights[j*sizeof(Light)].color[0])*255);
                     diffuse[1] = (int)(clamp(ndotl*objects[best_object*sizeof(Object)].diffuse_color[1]*lights[j*sizeof(Light)].color[1])*255);
                     diffuse[2] = (int)(clamp(ndotl*objects[best_object*sizeof(Object)].diffuse_color[2]*lights[j*sizeof(Light)].color[2])*255);
 
-                    specular[0] = objects[best_object*sizeof(Object)].specular_color[0];
-                    specular[1] = objects[best_object*sizeof(Object)].specular_color[1];
-                    specular[2] = objects[best_object*sizeof(Object)].specular_color[2];
 
-                    temporary.r += 0.25*(diffuse[0] + (int)(specular[0]*255)); //frad() * fang() * (diffuse + specular);
-                    temporary.g += 0.25*((int)(diffuse[1]*255) + (int)(specular[1]*255));//frad() * fang() * (diffuse + specular);
-                    temporary.b += 0.25*((int)(diffuse[2]*255) + (int)(specular[2]*255));//frad() * fang() * (diffuse + specular);
+                    double vdotr = v3_dot(v, r);
+                    if(vdotr < 0)
+                    {
+                        vdotr = 0;
+                    }
+
+                    specular[0] = (int)(clamp(pow(vdotr, ns)*objects[best_object*sizeof(Object)].specular_color[0]*lights[j*sizeof(Light)].color[0])*255);
+                    specular[1] = (int)(clamp(pow(vdotr, ns)*objects[best_object*sizeof(Object)].specular_color[1]*lights[j*sizeof(Light)].color[1])*255);
+                    specular[2] = (int)(clamp(pow(vdotr, ns)*objects[best_object*sizeof(Object)].specular_color[2]*lights[j*sizeof(Light)].color[2])*255);
+
+                    temporary.r += 0.25*(diffuse[0] + specular[0]); //frad() * fang() * (diffuse + specular);
+                    temporary.g += 0.25*((int)(diffuse[1]*255) + specular[1]);//frad() * fang() * (diffuse + specular);
+                    temporary.b += 0.25*((int)(diffuse[2]*255) + specular[2]);//frad() * fang() * (diffuse + specular);
                 }
             }
 
