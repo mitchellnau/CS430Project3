@@ -878,8 +878,8 @@ void store_pixels(int numOfObjects, int numOfLights, Object* objects, Pixel* dat
                     specular[2] = (int)(clamp(pow(vdotr, ns)*objects[best_object*sizeof(Object)].specular_color[2]*lights[j*sizeof(Light)].color[2])*255);
 
                     temporary.r += 0.25*(diffuse[0] + specular[0]); //frad() * fang() * (diffuse + specular);
-                    temporary.g += 0.25*((int)(diffuse[1]*255) + specular[1]);//frad() * fang() * (diffuse + specular);
-                    temporary.b += 0.25*((int)(diffuse[2]*255) + specular[2]);//frad() * fang() * (diffuse + specular);
+                    temporary.g += 0.25*(diffuse[1] + specular[1]);//frad() * fang() * (diffuse + specular);
+                    temporary.b += 0.25*(diffuse[2] + specular[2]);//frad() * fang() * (diffuse + specular);
                 }
             }
 
