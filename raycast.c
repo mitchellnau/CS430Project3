@@ -95,6 +95,13 @@ static inline void v3_cross(V3 a, V3 b, V3 c) {
   c[2] = a[0]*b[1] - a[1]*b[0];
 }
 
+double clamp(double input)
+{
+    if(input < 0) return 0.0;
+    else if (input > 1.0) return 1.0;
+    else return input;
+}
+
 //This function writes data from the pixel buffer passed into the function to the output file in ascii.
 int write_p3(Pixel* image)
 {
