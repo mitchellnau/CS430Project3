@@ -97,7 +97,7 @@ static inline void v3_cross(V3 a, V3 b, V3 c) {
 
 double clamp(double input)
 {
-    if(input < 0) return 0.0;
+    if(input < 0.0) return 0.0;
     else if (input > 1.0) return 1.0;
     else return input;
 }
@@ -855,15 +855,21 @@ void store_pixels(int numOfObjects, int numOfLights, Object* objects, Pixel* dat
 
                     //diffuse = ...; // uses object's diffuse color
                     //specular = ...; // uses object's specular color
-                    diffuse[0] = objects[best_object*sizeof(Object)].diffuse_color[0];
-                    diffuse[1] = objects[best_object*sizeof(Object)].diffuse_color[1];
-                    diffuse[2] = objects[best_object*sizeof(Object)].diffuse_color[2];
+
+                    double ndotl = v3_dot(n, l);
+                    if(ndotl < 0)
+                    {
+                        ndotl = clamp(ndotl);
+                    }
+                    diffuse[0] = (int)(clamp(ndotl*objects[best_object*sizeof(Object)].diffuse_color[0]*lights[j*sizeof(Light)].color[0])*255);
+                    diffuse[1] = (int)(clamp(ndotl*objects[best_object*sizeof(Object)].diffuse_color[1]*lights[j*sizeof(Light)].color[1])*255);
+                    diffuse[2] = (int)(clamp(ndotl*objects[best_object*sizeof(Object)].diffuse_color[2]*lights[j*sizeof(Light)].color[2])*255);
 
                     specular[0] = objects[best_object*sizeof(Object)].specular_color[0];
                     specular[1] = objects[best_object*sizeof(Object)].specular_color[1];
                     specular[2] = objects[best_object*sizeof(Object)].specular_color[2];
 
-                    temporary.r += 0.25*((int)(diffuse[0]*255) + (int)(specular[0]*255)); //frad() * fang() * (diffuse + specular);
+                    temporary.r += 0.25*(diffuse[0] + (int)(specular[0]*255)); //frad() * fang() * (diffuse + specular);
                     temporary.g += 0.25*((int)(diffuse[1]*255) + (int)(specular[1]*255));//frad() * fang() * (diffuse + specular);
                     temporary.b += 0.25*((int)(diffuse[2]*255) + (int)(specular[2]*255));//frad() * fang() * (diffuse + specular);
                 }
