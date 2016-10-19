@@ -829,6 +829,8 @@ void store_pixels(int numOfObjects, int numOfLights, Object* objects, Pixel* dat
                     double specular[3] = {0, 0, 0};
 
 
+                    //N = closest_object->normal; // plane
+                    //N = Ron - closest_object->center; // sphere
                     if(objects[best_object*sizeof(Object)].kind  == 1)
                     {
                         kind = objects[best_object*sizeof(Object)].kind;
@@ -844,15 +846,21 @@ void store_pixels(int numOfObjects, int numOfLights, Object* objects, Pixel* dat
                         //error check this
                     }
 
+                    //L = Rdn; // light_position - Ron;
                     v3_scale(Rdn, 1.0, l);
 
+                    //R = reflection of L = (2N dot L)N - L;
+                    double res[3] = {0, 0, 0};
+                    double scaleFactor = 0.0;
+                    v3_scale(n, 2.0, res); //2N
+                    scaleFactor = v3_dot(res, l); //(2n dot L)
+                    v3_scale(n, scaleFactor, res); //(2n dot L)N
+                    v3_subtract(res, l, r); //(2N dot L)N - L = R
+
+
+                    //V = Rd;
                     v3_scale(Rd, 1.0, v);
 
-                    //N = closest_object->normal; // plane
-                    //N = Ron - closest_object->center; // sphere
-                    //L = Rdn; // light_position - Ron;
-                    //R = reflection of L;
-                    //V = Rd;
 
                     //diffuse = ...; // uses object's diffuse color
                     //specular = ...; // uses object's specular color
