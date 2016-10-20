@@ -901,7 +901,7 @@ void store_pixels(int numOfObjects, int numOfLights, Object* objects, Pixel* dat
                     //specular = ...; // uses object's specular color
 
                     double ndotl = v3_dot(n, l);
-                    if(ndotl < 0)
+                    if(ndotl <= 0)
                     {
                         ndotl = 0;
                     }
@@ -911,26 +911,32 @@ void store_pixels(int numOfObjects, int numOfLights, Object* objects, Pixel* dat
 
 
                     double vdotr = v3_dot(v, r);
-                    if(vdotr < 0)
+                    if(vdotr <= 0)
                     {
                         vdotr = 0;
                     }
 
-                    specular[0] = (int)(clamp(pow(vdotr, ns)*objects[best_object*sizeof(Object)].specular_color[0]*lights[j*sizeof(Light)].color[0])*255);
-                    specular[1] = (int)(clamp(pow(vdotr, ns)*objects[best_object*sizeof(Object)].specular_color[1]*lights[j*sizeof(Light)].color[1])*255);
-                    specular[2] = (int)(clamp(pow(vdotr, ns)*objects[best_object*sizeof(Object)].specular_color[2]*lights[j*sizeof(Light)].color[2])*255);
+                    if(vdotr > 0 && ndotl > 0)
+                    {
+                        specular[0] = (int)(clamp(pow(vdotr, ns)*objects[best_object*sizeof(Object)].specular_color[0]*lights[j*sizeof(Light)].color[0])*255);
+                        specular[1] = (int)(clamp(pow(vdotr, ns)*objects[best_object*sizeof(Object)].specular_color[1]*lights[j*sizeof(Light)].color[1])*255);
+                        specular[2] = (int)(clamp(pow(vdotr, ns)*objects[best_object*sizeof(Object)].specular_color[2]*lights[j*sizeof(Light)].color[2])*255);
+                    }
 
                     temporary.r += fang()*frad(lights[j*sizeof(Light)].radial_a0,
                                                lights[j*sizeof(Light)].radial_a1,
                                                lights[j*sizeof(Light)].radial_a2,
+                                               best_t, Ro, Rd,
                                                lights[j*sizeof(Light)].position)*(diffuse[0] + specular[0]); //frad() * fang() * (diffuse + specular);
                     temporary.g += fang()*frad(lights[j*sizeof(Light)].radial_a0,
                                                 lights[j*sizeof(Light)].radial_a1,
                                                 lights[j*sizeof(Light)].radial_a2,
+                                                best_t, Ro, Rd,
                                                 lights[j*sizeof(Light)].position)*(diffuse[1] + specular[1]);//frad() * fang() * (diffuse + specular);
                     temporary.b += fang()*frad(lights[j*sizeof(Light)].radial_a0,
                                                lights[j*sizeof(Light)].radial_a1,
                                                 lights[j*sizeof(Light)].radial_a2,
+                                                best_t, Ro, Rd,
                                                 lights[j*sizeof(Light)].position)*(diffuse[2] + specular[2]);//frad() * fang() * (diffuse + specular);
                 }
             }
