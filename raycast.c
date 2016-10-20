@@ -389,7 +389,8 @@ int* read_scene(char* filename, Object* objects, Light* lights)
                             }
                             else
                             {
-                                //error check this
+                                fprintf(stderr, "Error: Unknown property, \"%s\", on line number %d.\n", key, line);
+                                exit(1);
                             }
                         }
                         else if(temp.kind == 0)
@@ -477,7 +478,8 @@ int* read_scene(char* filename, Object* objects, Light* lights)
                             }
                             else
                             {
-                                //error check this
+                                fprintf(stderr, "Error: Unknown property, \"%s\", on line number %d.\n", key, line);
+                                exit(1);
                             }
                         }
                         else if (temp.kind == 0 && (strcmp(key, "position") == 0))
@@ -511,7 +513,8 @@ int* read_scene(char* filename, Object* objects, Light* lights)
                                 p_attribute_counter++;
                             }
                             else{
-                                //error check this
+                                fprintf(stderr, "Error: Unknown property, \"%s\", on line number %d.\n", key, line);
+                                exit(1);
                             }
                         }
                         else if(temp.kind == 2)
@@ -546,7 +549,8 @@ int* read_scene(char* filename, Object* objects, Light* lights)
                             }
                             else
                             {
-                                //error check this
+                                fprintf(stderr, "Error: Unknown property, \"%s\", on line number %d.\n", key, line);
+                                exit(1);
                             }
                         }
                         else
