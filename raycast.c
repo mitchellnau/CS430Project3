@@ -44,17 +44,17 @@ typedef struct
     int kind; // 0 = radial, 1 = spotlight
     double color[3];
     double position[3];
+    double radial_a2;
+    double radial_a1;
+    double radial_a0;
+    double theta;
     union
     {
         struct
         {
-            double radial_a2;
         } radial;
         struct
         {
-            double radial_a2;
-            double radial_a1;
-            double radial_a0;
             double angular_a0;
             double direction[3];
         } spotlight;
@@ -369,18 +369,16 @@ int* read_scene(char* filename, Object* objects, Light* lights)
                         {
                             if((strcmp(key, "radial-a2") == 0))
                             {
-                                templight.radial.radial_a2 = value;
+                                templight.radial_a2 = value;
                                 //w_attribute_counter++;
                             }
                             else if((strcmp(key, "radial-a1") == 0))
                             {
-                                templight.kind = 1;
-                                templight.spotlight.radial_a1 = value;
+                                templight.radial_a1 = value;
                             }
                             else if((strcmp(key, "radial-a0") == 0))
                             {
-                                templight.kind = 1;
-                                templight.spotlight.radial_a0 = value;
+                                templight.radial_a0 = value;
                             }
                             else if((strcmp(key, "angular-a0") == 0))
                             {
