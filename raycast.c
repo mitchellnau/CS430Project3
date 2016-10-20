@@ -839,7 +839,11 @@ void store_pixels(int numOfObjects, int numOfLights, Object* objects, Pixel* dat
 
                     //N = closest_object->normal; // plane
                     //N = Ron - closest_object->center; // sphere
-                    if(objects[best_object*sizeof(Object)].kind  == 1)
+                    if(objects[best_object*sizeof(Object)].kind  == 0)
+                    {
+                        //camera found, do nothing
+                    }
+                    else if(objects[best_object*sizeof(Object)].kind  == 1)
                     {
                         kind = objects[best_object*sizeof(Object)].kind;
                         v3_subtract(Ron, objects[best_object*sizeof(Object)].sphere.center, n);
@@ -851,7 +855,8 @@ void store_pixels(int numOfObjects, int numOfLights, Object* objects, Pixel* dat
                     }
                     else
                     {
-                        //error check this
+                        fprintf(stderr, "Error: Unexpected object struct type located in memory, N could not be calculated.\n");
+                        exit(1);
                     }
 
                     //L = Rdn; // light_position - Ron;
