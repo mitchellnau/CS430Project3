@@ -362,7 +362,8 @@ int* read_scene(char* filename, Object* objects, Light* lights)
                             (strcmp(key, "radial-a2") == 0) ||
                             (strcmp(key, "radial-a1") == 0) ||
                             (strcmp(key, "radial-a0") == 0) ||
-                            (strcmp(key, "angular-a0") == 0))
+                            (strcmp(key, "angular-a0") == 0) ||
+                            (strcmp(key, "theta") == 0))
                     {
                         double value = next_number(json); //get the decimal number and store it in the relevant struct field
                         if(obj_or_light == 1)
@@ -384,6 +385,11 @@ int* read_scene(char* filename, Object* objects, Light* lights)
                             {
                                 templight.kind = 1;
                                 templight.spotlight.angular_a0 = value;
+                            }
+                            else if((strcmp(key, "theta") == 0))
+                            {
+                                if(value != 0) templight.kind = 1;
+                                templight.theta = value;
                             }
                             else
                             {
