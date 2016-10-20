@@ -103,6 +103,27 @@ double clamp(double input)
     else return input;
 }
 
+double frad(double a0, double a1, double a2, double t, double* Ro, double* Rd, double* pos)
+{
+    if(t == INFINITY) return 1.0;
+    else
+    {
+        double result, d;
+        double intersection[3] = {0, 0, 0};
+        double tRd[3] = {0, 0, 0};
+        v3_scale(Rd, t, tRd);
+        v3_add(Ro, tRd, intersection);
+        d = sqrt(pow(pos[0]-intersection[0], 2) + pow(pos[1]-intersection[1], 2) + pow(pos[2]-intersection[2], 2));
+        result = 1/(a2*(d*d) + a1*d + a0);
+        return result;
+    }
+}
+
+double fang()
+{
+    return 1.0;
+}
+
 //This function writes data from the pixel buffer passed into the function to the output file in ascii.
 int write_p3(Pixel* image)
 {
@@ -745,11 +766,12 @@ void store_pixels(int numOfObjects, int numOfLights, Object* objects, Pixel* dat
             normalize(Rd);
 
             double best_t = INFINITY; //find the minimum best t intersection of any object
+            double t = 0;
             int best_object = -1; //keep track of the corresponding object's index
 
             for (i=0; i < numOfObjects; i += 1)
             {
-                double t = 0;
+                t = 0;
 
                 switch(objects[i*sizeof(Object)].kind)
                 {
@@ -898,9 +920,18 @@ void store_pixels(int numOfObjects, int numOfLights, Object* objects, Pixel* dat
                     specular[1] = (int)(clamp(pow(vdotr, ns)*objects[best_object*sizeof(Object)].specular_color[1]*lights[j*sizeof(Light)].color[1])*255);
                     specular[2] = (int)(clamp(pow(vdotr, ns)*objects[best_object*sizeof(Object)].specular_color[2]*lights[j*sizeof(Light)].color[2])*255);
 
-                    temporary.r += 0.25*(diffuse[0] + specular[0]); //frad() * fang() * (diffuse + specular);
-                    temporary.g += 0.25*(diffuse[1] + specular[1]);//frad() * fang() * (diffuse + specular);
-                    temporary.b += 0.25*(diffuse[2] + specular[2]);//frad() * fang() * (diffuse + specular);
+                    temporary.r += fang()*frad(lights[j*sizeof(Light)].radial_a0,
+                                               lights[j*sizeof(Light)].radial_a1,
+                                               lights[j*sizeof(Light)].radial_a2,
+                                               lights[j*sizeof(Light)].position)*(diffuse[0] + specular[0]); //frad() * fang() * (diffuse + specular);
+                    temporary.g += fang()*frad(lights[j*sizeof(Light)].radial_a0,
+                                                lights[j*sizeof(Light)].radial_a1,
+                                                lights[j*sizeof(Light)].radial_a2,
+                                                lights[j*sizeof(Light)].position)*(diffuse[1] + specular[1]);//frad() * fang() * (diffuse + specular);
+                    temporary.b += fang()*frad(lights[j*sizeof(Light)].radial_a0,
+                                               lights[j*sizeof(Light)].radial_a1,
+                                                lights[j*sizeof(Light)].radial_a2,
+                                                lights[j*sizeof(Light)].position)*(diffuse[2] + specular[2]);//frad() * fang() * (diffuse + specular);
                 }
             }
 
