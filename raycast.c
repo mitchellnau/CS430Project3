@@ -96,6 +96,21 @@ static inline void v3_cross(V3 a, V3 b, V3 c) {
   c[2] = a[0]*b[1] - a[1]*b[0];
 }
 
+//This function returns the input value square
+static inline double sqr(double v)
+{
+    return v*v;
+}
+
+//this function normalizes the input vector
+static inline void normalize(double* v)
+{
+    double len = sqrt(sqr(v[0]) + sqr(v[1]) + sqr(v[2]));
+    v[0] /= len;
+    v[1] /= len;
+    v[2] /= len;
+}
+
 double clamp(double input)
 {
     if(input < 0.0) return 0.0;
@@ -121,6 +136,7 @@ double frad(double a0, double a1, double a2, double t, double* Ro, double* Rd, d
 
 double fang(int kind, double theta, double* vlight, double* vobject, double angular_a0)
 {
+    normalize(vlight);
     if(kind != 1) return 1.0;
     else if(v3_dot(vobject, vlight) < cos(theta*(M_PI/180))) return 0.0;
     else
@@ -144,21 +160,6 @@ int write_p3(Pixel* image)
                 image[i*sizeof(Pixel)].b);
     }
     return 1;
-}
-
-//This function returns the input value square
-static inline double sqr(double v)
-{
-    return v*v;
-}
-
-//this function normalizes the input vector
-static inline void normalize(double* v)
-{
-    double len = sqrt(sqr(v[0]) + sqr(v[1]) + sqr(v[2]));
-    v[0] /= len;
-    v[1] /= len;
-    v[2] /= len;
 }
 
 // next_c() wraps the getc() function and provides error checking and line
@@ -361,6 +362,7 @@ int* read_scene(char* filename, Object* objects, Light* lights)
             int w_attribute_counter = 0;
             int h_attribute_counter = 0;
             int r_attribute_counter = 0;
+
             int dc_attribute_counter = 0;
             int sc_attribute_counter = 0;
             int p_attribute_counter = 0;
@@ -807,22 +809,26 @@ void store_pixels(int numOfObjects, int numOfLights, Object* objects, Pixel* dat
             //temporary.b = 0;
 
 
+            double Ron[3] = {0, 0, 0};
+            double test[3] = {0, 0, 0};
+            v3_scale(Rd, best_t, test);
+            v3_add(test, Ro, Ron);
 
             for (j=0; j < numOfLights; j+=1)
             {
                 // Shadow test
-                double Ron[3] = {0, 0, 0};
                 double Rdn[3] = {0, 0, 0};
 
-                v3_add(Rd, Ro, Ron);
-                v3_scale(Ron, best_t, Ron);
+                //v3_add(Rd, Ro, Ron);
+                //v3_scale(Ron, best_t, Ron);
                 //Ron = best_t * Rd + Ro;
 
-                v3_subtract(lights[j].position, Ron, Rdn);
+                v3_subtract(lights[j*sizeof(Light)].position, Ron, Rdn);
                 //Rdn = light_position - Ron;
                 int closest_shadow_object = -1;
                 double best_lobjt = INFINITY;
                 double distance_to_light = sqrt(sqr(Rdn[0]) + sqr(Rdn[1]) + sqr(Rdn[2]));
+                normalize(Rdn);
                 for (k=0; k < numOfObjects; k+=1)
                 {
                     double lobjt = 0;
@@ -880,7 +886,7 @@ void store_pixels(int numOfObjects, int numOfLights, Object* objects, Pixel* dat
                     }
                     else if(objects[best_object*sizeof(Object)].kind  == 2)
                     {
-                        v3_scale(objects[best_object*sizeof(Object)].sphere.center, 1.0, n);
+                        v3_scale(objects[best_object*sizeof(Object)].plane.normal, 1.0, n);
                     }
                     else
                     {
