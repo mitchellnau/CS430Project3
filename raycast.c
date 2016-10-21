@@ -814,10 +814,12 @@ void store_pixels(int numOfObjects, int numOfLights, Object* objects, Pixel* dat
 
                 v3_subtract(lights[j].position, Ron, Rdn);
                 //Rdn = light_position - Ron;
-                Object* closest_shadow_object = NULL;
+                int closest_shadow_object = -1;
+                double best_lobjt = INFINITY;
+                double distance_to_light = sqrt(sqr(Rdn[0]) + sqr(Rdn[1]) + sqr(Rdn[2]));
                 for (k=0; k < numOfObjects; k+=1)
                 {
-                    double distance_to_light = 0;
+                    double lobjt = 0;
 
                     if (k == best_object) continue;
                     //
@@ -826,12 +828,12 @@ void store_pixels(int numOfObjects, int numOfLights, Object* objects, Pixel* dat
                     case 0: //camera has no physical intersections
                         break;
                     case 1: //if the object is a sphere, find its minimum intersection
-                        distance_to_light = sphere_intersection(Ron, Rdn,
+                        lobjt = sphere_intersection(Ron, Rdn,
                         objects[k*sizeof(Object)].sphere.center,
                         objects[k*sizeof(Object)].sphere.radius);
                         break;
                     case 2: //if the object is a plane, find its point of intersection
-                        distance_to_light = plane_intersection(Ron, Rdn,
+                        lobjt = plane_intersection(Ron, Rdn,
                         objects[k*sizeof(Object)].plane.center,
                         objects[k*sizeof(Object)].plane.normal);
                         break;
@@ -839,12 +841,17 @@ void store_pixels(int numOfObjects, int numOfLights, Object* objects, Pixel* dat
                         fprintf(stderr, "Error: Forbidden object struct type located in memory, intersection could not be calculated.\n");
                         exit(1);
                     }
-                    if (best_t > distance_to_light)
+                    if (lobjt > distance_to_light)
                     {
                         continue;
                     }
+                    if (lobjt > 0 && lobjt < best_lobjt) //if an object is in front of another object, ensure the front-most object is displayed
+                    {
+                        best_lobjt = lobjt;
+                        closest_shadow_object = k;
+                    }
                 }
-                if (closest_shadow_object == NULL)
+                if (closest_shadow_object == -1)
                 {
                     // N, L, R, V
                     double n[3] = {0, 0, 0};
