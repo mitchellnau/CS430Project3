@@ -13,6 +13,7 @@ typedef struct Pixel
     unsigned char r, g, b;
 } Pixel;
 
+//data type to store objects
 typedef struct
 {
     int kind; // 0 = camera, 1 = sphere, 2 = plane
@@ -39,6 +40,7 @@ typedef struct
     };
 } Object;
 
+//data type to store lights
 typedef struct
 {
     int kind; // 0 = radial, 1 = spotlight
@@ -66,8 +68,9 @@ typedef double* V3;
 FILE* outputfp;
 int pwidth, pheight, maxcv; //global variables to store p3 header information
 int line = 1;               //global variable to store line of json file currently being parsed
-int ns = 20;
+int ns = 20;                //global variable to store phong reflectivity
 
+//3D math inline functions
 static inline void v3_add(V3 a, V3 b, V3 c) {
   c[0] = a[0] + b[0];
   c[1] = a[1] + b[1];
@@ -96,7 +99,7 @@ static inline void v3_cross(V3 a, V3 b, V3 c) {
   c[2] = a[0]*b[1] - a[1]*b[0];
 }
 
-//This function returns the input value square
+//This function returns the input value squared
 static inline double sqr(double v)
 {
     return v*v;
@@ -111,6 +114,7 @@ static inline void normalize(double* v)
     v[2] /= len;
 }
 
+//this function clamps the input value between 0 and 1
 double clamp(double input)
 {
     if(input < 0.0) return 0.0;
@@ -118,6 +122,9 @@ double clamp(double input)
     else return input;
 }
 
+//this function calculates the amount of radial attenuation of a light for a given coordinate
+//based off of the parameters, calculating the distance between where the camera intersects the relevant object
+//and the light's position, then calculating the value to return based off of that and the passed in radial values
 double frad(double a0, double a1, double a2, double t, double* Ro, double* Rd, double* pos)
 {
     if(t == INFINITY) return 1.0;
@@ -134,6 +141,9 @@ double frad(double a0, double a1, double a2, double t, double* Ro, double* Rd, d
     }
 }
 
+//this function calculates the amount of angular attenuation of a spotlight for a given coordinate
+//returns 1.0 if the input light was a radial light and 0.0 if the coordinate falls outside of the spotlight's cone.
+//If the coordinate falls inside the cone, the amount to color by is returned
 double fang(int kind, double theta, double* vlight, double* vobject, double angular_a0)
 {
     normalize(vlight);
@@ -348,10 +358,9 @@ int* read_scene(char* filename, Object* objects, Light* lights)
             }
             else if (strcmp(value, "light") == 0)
             {
-                obj_or_light = 1;
-                //light was found
+                obj_or_light = 1;     //remember that a light was found
             }
-            else                       //if a non-camera/sphere/plane was found as the the type, print an error message and exit
+            else                       //if a non-camera/sphere/plane/light was found as the the type, print an error message and exit
             {
                 fprintf(stderr, "Error: Unknown type, \"%s\", on line number %d.\n", value, line);
                 exit(1);
@@ -359,6 +368,7 @@ int* read_scene(char* filename, Object* objects, Light* lights)
 
             skip_ws(json);
 
+            //attribute counters for error checking
             int w_attribute_counter = 0;
             int h_attribute_counter = 0;
             int r_attribute_counter = 0;
@@ -392,7 +402,7 @@ int* read_scene(char* filename, Object* objects, Light* lights)
                     skip_ws(json);
                     expect_c(json, ':');           //key-value pair is separated by a colon
                     skip_ws(json);
-                    if ((strcmp(key, "width") == 0) ||    //if the key denotes an decimal number
+                    if ((strcmp(key, "width") == 0) ||    //if the key denotes a decimal number
                             (strcmp(key, "height") == 0) ||
                             (strcmp(key, "radius") == 0) ||
                             (strcmp(key, "radial-a2") == 0) ||
@@ -513,7 +523,7 @@ int* read_scene(char* filename, Object* objects, Light* lights)
                                 exit(1);
                             }
                         }
-                        if(obj_or_light == 1)
+                        if(obj_or_light == 1) //if the current thing being parsed is a light
                         {
                             if((strcmp(key, "color") == 0))
                             {
@@ -647,7 +657,7 @@ int* read_scene(char* filename, Object* objects, Light* lights)
                     exit(1);
                 }
             }
-            //error checking for duplicate object attributes
+            //error checking for duplicate or missing object attributes
             if(obj_or_light == 0 && temp.kind == 0 && (h_attribute_counter != 1 || w_attribute_counter != 1 || dc_attribute_counter != 0 ||
                                                       sc_attribute_counter != 0 || n_attribute_counter != 0 || r_attribute_counter != 0))
             {
@@ -668,15 +678,15 @@ int* read_scene(char* filename, Object* objects, Light* lights)
                 fprintf(stderr, "Error: Expecting unique color, position, or normal attributes for plane object on line %d.\n", line);
                 exit(1);
             }
-            //light error checking
-            if(obj_or_light == 1 && temp.kind == 0 && (c_attribute_counter != 1 || ra2_attribute_counter != 1 || ra1_attribute_counter != 1 ||
+            //error checking for duplicate or missing light attributes
+            if(obj_or_light == 1 && templight.kind == 0 && (c_attribute_counter != 1 || ra2_attribute_counter != 1 || ra1_attribute_counter != 1 ||
                                                        ra0_attribute_counter != 1  || p_attribute_counter != 1 || d_attribute_counter != 0 ||
                                                        aa0_attribute_counter != 0))
             {
                 fprintf(stderr, "Error: Expecting unique color, ra2, ra1, ra0, position properties for light on line %d.\n", line);
                 exit(1);
             }
-            if(obj_or_light == 1 && temp.kind == 1 && (c_attribute_counter != 1 || ra2_attribute_counter != 1 || ra1_attribute_counter != 1 ||
+            if(obj_or_light == 1 && templight.kind == 1 && (c_attribute_counter != 1 || ra2_attribute_counter != 1 || ra1_attribute_counter != 1 ||
                                                        ra0_attribute_counter != 1  || p_attribute_counter != 1 || d_attribute_counter != 1 ||
                                                        aa0_attribute_counter != 1 || t_attribute_counter != 1))
             {
@@ -686,12 +696,13 @@ int* read_scene(char* filename, Object* objects, Light* lights)
             skip_ws(json);
             c = next_c(json);
 
+            //if the current thing being parsed is not a light, store it object data
             if(obj_or_light == 0)
             {
                 *(objects+i*sizeof(Object)) = temp; //allocate the temporary object into a struct of objects at its corresponding position
                 i++; //and increment the index of the current object for the memory that holds the object structs
             }
-            else
+            else //otherwise store it in light data
             {
                 *(lights+j*sizeof(Light)) = templight; //allocate the temporary light into a struct of lights at its corresponding position
                 j++; //and increment the index of the current light for the memory that holds the light structs
@@ -763,10 +774,10 @@ double plane_intersection(double* Ro, double* Rd,
     return t;
 }
 
-//this function takes in the number of objects in the input json file, memory where those objects are stored,
+//this function takes in the number of objects and lights in the input json file, memory where those objects and lights are stored,
 //and a buffer to store the data of each pixel.  It then uses the camera information to display the intersections
 //of raycasts and the objects those raycasts are hitting to store RGB pixel values for that spot of intersection
-//as observed by the camera position.
+//as observed by the camera position.  It also illuminates those objects based on the information in the lights buffer.
 void store_pixels(int numOfObjects, int numOfLights, Object* objects, Pixel* data, Light* lights)
 {
     double cx, cy, h, w;
@@ -849,13 +860,9 @@ void store_pixels(int numOfObjects, int numOfLights, Object* objects, Pixel* dat
                 }
             }
 
-            double color[3] = {0,0,0};
-            //Pixel temporary;
-            //temporary.r = 0;
-            //temporary.g = 0;
-            //temporary.b = 0;
+            double color[3] = {0,0,0}; //ambient lighting is 0
 
-
+            //Ron = best_t * Rd + Ro;
             double Ron[3] = {0, 0, 0};
             double test[3] = {0, 0, 0};
             v3_scale(Rd, best_t, test);
@@ -865,17 +872,13 @@ void store_pixels(int numOfObjects, int numOfLights, Object* objects, Pixel* dat
             {
                 // Shadow test
                 double Rdn[3] = {0, 0, 0};
-
-                //v3_add(Rd, Ro, Ron);
-                //v3_scale(Ron, best_t, Ron);
-                //Ron = best_t * Rd + Ro;
-
-                v3_subtract(lights[j*sizeof(Light)].position, Ron, Rdn);
                 //Rdn = light_position - Ron;
+                v3_subtract(lights[j*sizeof(Light)].position, Ron, Rdn);
                 int closest_shadow_object = -1;
                 double best_lobjt = INFINITY;
                 double distance_to_light = sqrt(sqr(Rdn[0]) + sqr(Rdn[1]) + sqr(Rdn[2]));
                 normalize(Rdn);
+                //find the closest object to the shadow for shadow omission
                 for (k=0; k < numOfObjects; k+=1)
                 {
                     double lobjt = 0;
@@ -958,10 +961,8 @@ void store_pixels(int numOfObjects, int numOfLights, Object* objects, Pixel* dat
                     //V = Rd;
                     v3_scale(Rd, -1.0, v);
 
-
-                    //diffuse = ...; // uses object's diffuse color
-                    //specular = ...; // uses object's specular color
-
+                    //calculates the diffuse light on an object based off of the equation
+                    //Ksubd * IsubL * (N dot L) only if N dot L is greater than 0
                     double ndotl = v3_dot(n, l);
                     if(ndotl <= 0)
                     {
@@ -972,7 +973,8 @@ void store_pixels(int numOfObjects, int numOfLights, Object* objects, Pixel* dat
                     diffuse[1] = ndotl*objects[best_object*sizeof(Object)].diffuse_color[1]*lights[j*sizeof(Light)].color[1];
                     diffuse[2] = ndotl*objects[best_object*sizeof(Object)].diffuse_color[2]*lights[j*sizeof(Light)].color[2];
 
-
+                    //calculates the specular light on an object based off of the equation
+                    //Ksubs * IsubL * (V dot R)^ns only if N dot L and V dot R are greater than 0
                     double vdotr = v3_dot(v, r);
                     if(vdotr <= 0)
                     {
@@ -989,6 +991,7 @@ void store_pixels(int numOfObjects, int numOfLights, Object* objects, Pixel* dat
                     double angular_a0;
                     double light_dir[3] = {0,0,0};
 
+                    //get the light's direction if it has one so that it can be passed into fang
                     if(lights[j*sizeof(Light)].kind == 1)
                     {
                         light_dir[0] = lights[j*sizeof(Light)].spotlight.direction[0];
@@ -997,12 +1000,12 @@ void store_pixels(int numOfObjects, int numOfLights, Object* objects, Pixel* dat
                         angular_a0 = lights[j*sizeof(Light)].spotlight.angular_a0;
                     }
 
+                    //get vobject so it can be passed into fang
                     double vobject[3] = {0, 0, 0};
                     v3_scale(Rdn, -1, vobject);
                     normalize(vobject);
 
-
-
+                    //summation of all lights' effect on a given coordinate
                     color[0] += fang(lights[j*sizeof(Light)].kind,
                                      lights[j*sizeof(Light)].theta,
                                      light_dir, vobject,
@@ -1114,7 +1117,7 @@ int main(int argc, char* argv[])
     }
     fclose(outputfp); //close the output file
     printf("closing...");
-    free(lights);
+    free(lights); //free the memory being used
     free(objects);
     free(data);
     return(0);
