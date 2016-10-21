@@ -50,3 +50,5 @@ Temporary Items
 *.depend
 *.layout
 *.exe
+shading example.c
+shading example.c
