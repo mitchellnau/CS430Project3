@@ -362,11 +362,18 @@ int* read_scene(char* filename, Object* objects, Light* lights)
             int w_attribute_counter = 0;
             int h_attribute_counter = 0;
             int r_attribute_counter = 0;
+            int ra0_attribute_counter = 0;
+            int ra1_attribute_counter = 0;
+            int ra2_attribute_counter = 0;
+            int aa0_attribute_counter = 0;
+            int t_attribute_counter = 0;
 
             int dc_attribute_counter = 0;
             int sc_attribute_counter = 0;
             int p_attribute_counter = 0;
             int n_attribute_counter = 0;
+            int c_attribute_counter = 0;
+            int d_attribute_counter = 0;
 
             while (1)         //this loop gets each attribute of an object
             {
@@ -399,26 +406,50 @@ int* read_scene(char* filename, Object* objects, Light* lights)
                         {
                             if((strcmp(key, "radial-a2") == 0))
                             {
+                                if(value < 0)
+                                {
+                                    fprintf(stderr, "Error: radial-a2 cannot be negative, \"%f\", on line number %d.\n", value, line);
+                                    exit(1);
+                                }
                                 templight.radial_a2 = value;
-                                //w_attribute_counter++;
+                                ra2_attribute_counter++;
                             }
                             else if((strcmp(key, "radial-a1") == 0))
                             {
+                                if(value < 0)
+                                {
+                                    fprintf(stderr, "Error: radial-a1 cannot be negative, \"%f\", on line number %d.\n", value, line);
+                                    exit(1);
+                                }
                                 templight.radial_a1 = value;
+                                ra1_attribute_counter++;
                             }
                             else if((strcmp(key, "radial-a0") == 0))
                             {
+                                if(value < 0)
+                                {
+                                    fprintf(stderr, "Error: radial-a0 cannot be negative, \"%f\", on line number %d.\n", value, line);
+                                    exit(1);
+                                }
                                 templight.radial_a0 = value;
+                                ra0_attribute_counter++;
                             }
                             else if((strcmp(key, "angular-a0") == 0))
                             {
+                                if(value < 0)
+                                {
+                                    fprintf(stderr, "Error: angular-a0 cannot be negative, \"%f\", on line number %d.\n", value, line);
+                                    exit(1);
+                                }
                                 templight.kind = 1;
                                 templight.spotlight.angular_a0 = value;
+                                aa0_attribute_counter++;
                             }
                             else if((strcmp(key, "theta") == 0))
                             {
                                 if(value != 0) templight.kind = 1;
                                 templight.theta = value;
+                                t_attribute_counter++;
                             }
                             else
                             {
@@ -489,14 +520,14 @@ int* read_scene(char* filename, Object* objects, Light* lights)
                                 templight.color[0] = value[0];
                                 templight.color[1] = value[1];
                                 templight.color[2] = value[2];
-                                //c_attribute_counter++;
+                                c_attribute_counter++;
                             }
                             else if((strcmp(key, "position") == 0))
                             {
                                 templight.position[0] = value[0];
                                 templight.position[1] = value[1];
                                 templight.position[2] = value[2];
-                                //p_attribute_counter++;
+                                p_attribute_counter++;
                             }
                             else if((strcmp(key, "direction") == 0))
                             {
@@ -504,6 +535,7 @@ int* read_scene(char* filename, Object* objects, Light* lights)
                                 templight.spotlight.direction[0] = value[0];
                                 templight.spotlight.direction[1] = value[1];
                                 templight.spotlight.direction[2] = value[2];
+                                d_attribute_counter++;
                             }
                             else
                             {
@@ -634,6 +666,21 @@ int* read_scene(char* filename, Object* objects, Light* lights)
                                                        r_attribute_counter != 0))
             {
                 fprintf(stderr, "Error: Expecting unique color, position, or normal attributes for plane object on line %d.\n", line);
+                exit(1);
+            }
+            //light error checking
+            if(obj_or_light == 1 && temp.kind == 0 && (c_attribute_counter != 1 || ra2_attribute_counter != 1 || ra1_attribute_counter != 1 ||
+                                                       ra0_attribute_counter != 1  || p_attribute_counter != 1 || d_attribute_counter != 0 ||
+                                                       aa0_attribute_counter != 0))
+            {
+                fprintf(stderr, "Error: Expecting unique color, ra2, ra1, ra0, position properties for light on line %d.\n", line);
+                exit(1);
+            }
+            if(obj_or_light == 1 && temp.kind == 1 && (c_attribute_counter != 1 || ra2_attribute_counter != 1 || ra1_attribute_counter != 1 ||
+                                                       ra0_attribute_counter != 1  || p_attribute_counter != 1 || d_attribute_counter != 1 ||
+                                                       aa0_attribute_counter != 1 || t_attribute_counter != 1))
+            {
+                fprintf(stderr, "Error: Expecting unique color, ra2, ra1, ra0, position, aa0, direction, theta for light on line %d.\n", line);
                 exit(1);
             }
             skip_ws(json);
