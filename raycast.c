@@ -430,10 +430,6 @@ int* read_scene(char* filename, Object* objects, Light* lights)
                                 temp.camera.height = value;
                                 h_attribute_counter++;
                             }
-                            else if(strcmp(key, "position") == 0)
-                            {
-                                //do nothing
-                            }
                             else
                             {
                                 fprintf(stderr, "Error: Camera object has unexpected attribute '%s' on line number %d.\n", key, line);
@@ -561,7 +557,7 @@ int* read_scene(char* filename, Object* objects, Light* lights)
                             else if(temp.kind == 2 && (strcmp(key, "position") == 0))
                             {
                                 temp.plane.center[0] = value[0];
-                                temp.plane.center[1] = value[1];
+                                temp.plane.center[1] = -value[1];
                                 temp.plane.center[2] = value[2];
                                 p_attribute_counter++;
                             }
@@ -798,10 +794,11 @@ void store_pixels(int numOfObjects, int numOfLights, Object* objects, Pixel* dat
                 }
             }
 
-            Pixel temporary;
-            temporary.r = 0;
-            temporary.g = 0;
-            temporary.b = 0;
+            double color[3] = {0,0,0};
+            //Pixel temporary;
+            //temporary.r = 0;
+            //temporary.g = 0;
+            //temporary.b = 0;
 
 
 
@@ -880,9 +877,11 @@ void store_pixels(int numOfObjects, int numOfLights, Object* objects, Pixel* dat
                         fprintf(stderr, "Error: Unexpected object struct type located in memory, N could not be calculated.\n");
                         exit(1);
                     }
+                    normalize(n);
 
                     //L = Rdn; // light_position - Ron;
                     v3_scale(Rdn, 1.0, l);
+                    normalize(l);
 
                     //R = reflection of L = (2N dot L)N - L;
                     double res[3] = {0, 0, 0};
@@ -894,7 +893,7 @@ void store_pixels(int numOfObjects, int numOfLights, Object* objects, Pixel* dat
 
 
                     //V = Rd;
-                    v3_scale(Rd, 1.0, v);
+                    v3_scale(Rd, -1.0, v);
 
 
                     //diffuse = ...; // uses object's diffuse color
@@ -905,9 +904,10 @@ void store_pixels(int numOfObjects, int numOfLights, Object* objects, Pixel* dat
                     {
                         ndotl = 0;
                     }
-                    diffuse[0] = (int)(clamp(ndotl*objects[best_object*sizeof(Object)].diffuse_color[0]*lights[j*sizeof(Light)].color[0])*255);
-                    diffuse[1] = (int)(clamp(ndotl*objects[best_object*sizeof(Object)].diffuse_color[1]*lights[j*sizeof(Light)].color[1])*255);
-                    diffuse[2] = (int)(clamp(ndotl*objects[best_object*sizeof(Object)].diffuse_color[2]*lights[j*sizeof(Light)].color[2])*255);
+
+                    diffuse[0] = ndotl*objects[best_object*sizeof(Object)].diffuse_color[0]*lights[j*sizeof(Light)].color[0];
+                    diffuse[1] = ndotl*objects[best_object*sizeof(Object)].diffuse_color[1]*lights[j*sizeof(Light)].color[1];
+                    diffuse[2] = ndotl*objects[best_object*sizeof(Object)].diffuse_color[2]*lights[j*sizeof(Light)].color[2];
 
 
                     double vdotr = v3_dot(v, r);
@@ -918,22 +918,22 @@ void store_pixels(int numOfObjects, int numOfLights, Object* objects, Pixel* dat
 
                     if(vdotr > 0 && ndotl > 0)
                     {
-                        specular[0] = (int)(clamp(pow(vdotr, ns)*objects[best_object*sizeof(Object)].specular_color[0]*lights[j*sizeof(Light)].color[0])*255);
-                        specular[1] = (int)(clamp(pow(vdotr, ns)*objects[best_object*sizeof(Object)].specular_color[1]*lights[j*sizeof(Light)].color[1])*255);
-                        specular[2] = (int)(clamp(pow(vdotr, ns)*objects[best_object*sizeof(Object)].specular_color[2]*lights[j*sizeof(Light)].color[2])*255);
+                        specular[0] = pow(vdotr, ns)*objects[best_object*sizeof(Object)].specular_color[0]*lights[j*sizeof(Light)].color[0];
+                        specular[1] = pow(vdotr, ns)*objects[best_object*sizeof(Object)].specular_color[1]*lights[j*sizeof(Light)].color[1];
+                        specular[2] = pow(vdotr, ns)*objects[best_object*sizeof(Object)].specular_color[2]*lights[j*sizeof(Light)].color[2];
                     }
 
-                    temporary.r += fang()*frad(lights[j*sizeof(Light)].radial_a0,
+                    color[0] += fang()*frad(lights[j*sizeof(Light)].radial_a0,
                                                lights[j*sizeof(Light)].radial_a1,
                                                lights[j*sizeof(Light)].radial_a2,
                                                best_t, Ro, Rd,
                                                lights[j*sizeof(Light)].position)*(diffuse[0] + specular[0]); //frad() * fang() * (diffuse + specular);
-                    temporary.g += fang()*frad(lights[j*sizeof(Light)].radial_a0,
+                    color[1] += fang()*frad(lights[j*sizeof(Light)].radial_a0,
                                                 lights[j*sizeof(Light)].radial_a1,
                                                 lights[j*sizeof(Light)].radial_a2,
                                                 best_t, Ro, Rd,
                                                 lights[j*sizeof(Light)].position)*(diffuse[1] + specular[1]);//frad() * fang() * (diffuse + specular);
-                    temporary.b += fang()*frad(lights[j*sizeof(Light)].radial_a0,
+                    color[2] += fang()*frad(lights[j*sizeof(Light)].radial_a0,
                                                lights[j*sizeof(Light)].radial_a1,
                                                 lights[j*sizeof(Light)].radial_a2,
                                                 best_t, Ro, Rd,
@@ -947,9 +947,10 @@ void store_pixels(int numOfObjects, int numOfLights, Object* objects, Pixel* dat
             {
                 //at the correct x,y location
                 //printf("here. x %d\ty %d\n", x, y);
-                //temporary.r = (int)(objects[best_object*sizeof(Object)].diffuse_color[0]*255);
-                //temporary.g = (int)(objects[best_object*sizeof(Object)].diffuse_color[1]*255);
-                //temporary.b = (int)(objects[best_object*sizeof(Object)].diffuse_color[2]*255);
+                Pixel temporary;
+                temporary.r = (int)(clamp(color[0])*255);
+                temporary.g = (int)(clamp(color[1])*255);
+                temporary.b = (int)(clamp(color[2])*255);
                 *(data+(sizeof(Pixel)*pheight*pwidth)-(y+1)*pwidth*sizeof(Pixel)+x*sizeof(Pixel)) = temporary;
             }
             else //no point of intersection was found for any object at the given x,y so put black into that x,y pixel into the buffer
