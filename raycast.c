@@ -119,8 +119,14 @@ double frad(double a0, double a1, double a2, double t, double* Ro, double* Rd, d
     }
 }
 
-double fang()
+double fang(int kind, double theta, double* vlight, double* vobject, double angular_a0)
 {
+    if(kind != 1) return 1.0;
+    else if(v3_dot(vobject, vlight) < cos(theta*(M_PI/180))) return 0.0;
+    else
+    {
+        return pow(v3_dot(vobject, vlight),angular_a0);
+    }
     return 1.0;
 }
 
@@ -858,7 +864,6 @@ void store_pixels(int numOfObjects, int numOfLights, Object* objects, Pixel* dat
                     double l[3] = {0, 0, 0};
                     double r[3] = {0, 0, 0};
                     double v[3] = {0, 0, 0};
-                    int kind = 0;
                     double diffuse[3] = {0, 0, 0};
                     double specular[3] = {0, 0, 0};
 
@@ -871,12 +876,10 @@ void store_pixels(int numOfObjects, int numOfLights, Object* objects, Pixel* dat
                     }
                     else if(objects[best_object*sizeof(Object)].kind  == 1)
                     {
-                        kind = objects[best_object*sizeof(Object)].kind;
                         v3_subtract(Ron, objects[best_object*sizeof(Object)].sphere.center, n);
                     }
                     else if(objects[best_object*sizeof(Object)].kind  == 2)
                     {
-                        kind = objects[best_object*sizeof(Object)].kind;
                         v3_scale(objects[best_object*sizeof(Object)].sphere.center, 1.0, n);
                     }
                     else
@@ -930,17 +933,46 @@ void store_pixels(int numOfObjects, int numOfLights, Object* objects, Pixel* dat
                         specular[2] = pow(vdotr, ns)*objects[best_object*sizeof(Object)].specular_color[2]*lights[j*sizeof(Light)].color[2];
                     }
 
-                    color[0] += fang()*frad(lights[j*sizeof(Light)].radial_a0,
+                    double angular_a0;
+                    double light_dir[3] = {0,0,0};
+
+                    if(lights[j*sizeof(Light)].kind == 1)
+                    {
+                        light_dir[0] = lights[j*sizeof(Light)].spotlight.direction[0];
+                        light_dir[1] = lights[j*sizeof(Light)].spotlight.direction[1];
+                        light_dir[2] = lights[j*sizeof(Light)].spotlight.direction[2];
+                        angular_a0 = lights[j*sizeof(Light)].spotlight.angular_a0;
+                    }
+
+                    double vobject[3] = {0, 0, 0};
+                    v3_scale(Rdn, -1, vobject);
+                    normalize(vobject);
+
+
+
+                    color[0] += fang(lights[j*sizeof(Light)].kind,
+                                     lights[j*sizeof(Light)].theta,
+                                     light_dir, vobject,
+                                     lights[j*sizeof(Light)].spotlight.angular_a0)
+                               *frad(lights[j*sizeof(Light)].radial_a0,
                                                lights[j*sizeof(Light)].radial_a1,
                                                lights[j*sizeof(Light)].radial_a2,
                                                best_t, Ro, Rd,
                                                lights[j*sizeof(Light)].position)*(diffuse[0] + specular[0]); //frad() * fang() * (diffuse + specular);
-                    color[1] += fang()*frad(lights[j*sizeof(Light)].radial_a0,
+                    color[1] += fang(lights[j*sizeof(Light)].kind,
+                                     lights[j*sizeof(Light)].theta,
+                                     light_dir, vobject,
+                                     lights[j*sizeof(Light)].spotlight.angular_a0)
+                               *frad(lights[j*sizeof(Light)].radial_a0,
                                                 lights[j*sizeof(Light)].radial_a1,
                                                 lights[j*sizeof(Light)].radial_a2,
                                                 best_t, Ro, Rd,
                                                 lights[j*sizeof(Light)].position)*(diffuse[1] + specular[1]);//frad() * fang() * (diffuse + specular);
-                    color[2] += fang()*frad(lights[j*sizeof(Light)].radial_a0,
+                    color[2] += fang(lights[j*sizeof(Light)].kind,
+                                     lights[j*sizeof(Light)].theta,
+                                     light_dir, vobject,
+                                     lights[j*sizeof(Light)].spotlight.angular_a0)
+                               *frad(lights[j*sizeof(Light)].radial_a0,
                                                lights[j*sizeof(Light)].radial_a1,
                                                 lights[j*sizeof(Light)].radial_a2,
                                                 best_t, Ro, Rd,
